@@ -1,17 +1,16 @@
 package be.charybde.bank.command.bank;
 
-import be.charybde.bank.BCC;
 import be.charybde.bank.Utils;
 import be.charybde.bank.Vault;
 import be.charybde.bank.command.ICommandHandler;
 import be.charybde.bank.command.commandUtil;
 import be.charybde.bank.entities.Account;
 import be.charybde.bank.entities.Bank;
-import be.charybde.bank.entities.Entities;
 import org.bukkit.entity.Player;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class BankInfoCommand implements ICommandHandler {
@@ -31,7 +30,7 @@ public class BankInfoCommand implements ICommandHandler {
             return false;
 
         Bank subject;
-        if(Vault.getPermission().has(player, "bcc.admin")){
+        if(player == null || Vault.getPermission().has(player, "bcc.admin")){
             subject = Bank.fetch(args[0]);
         }
         else{
@@ -43,18 +42,18 @@ public class BankInfoCommand implements ICommandHandler {
         }
 
 
-        ArrayList<Account> clients = subject.fecthClients();
+        List<Account> clients = subject.fetchClients();
         String clientList = "";
         double depot = 0.0;
         for(Account it : clients){
-            clientList += it.getDisplayName() + ", ";
+            clientList += it.displayName() + ", ";
             depot += it.getBalance();
         }
         if(clientList.equals("")){
             clientList = " [Aucun client]";
         }
 
-        double retrait = subject.getMoney() - 0.5 * depot;
+        double retrait = subject.getCapacity();
 
         Map<String, String> message = new HashMap<>();
         message.put("name", subject.getName());

@@ -3,6 +3,7 @@ package be.charybde.bank;
 import be.charybde.bank.command.*;
 import be.charybde.bank.command.account.*;
 import be.charybde.bank.command.bank.*;
+import be.charybde.bank.db.sqlite.SQLite;
 import be.charybde.bank.entities.Entities;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
@@ -20,6 +21,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.logging.*;
 
+
 public class BCC extends JavaPlugin {
     private static final Logger logger = Logger.getLogger("Minecraft");
     private static final Logger transactionlogger = Logger.getLogger("Transactions");
@@ -30,12 +32,20 @@ public class BCC extends JavaPlugin {
     private Map<Entities, File> storageF;
     public static BCC plugin = null;
 
+    public static SQLite db = null;
+
     public static BCC getInstance(){
         return plugin;
     }
 
     @Override
     public void onEnable() {
+        db = new SQLite(this);
+//        db.writeAccount(new Account("Manndermacht", asList("CharybdeBE", "Tud"), false, "black", 1000.0, "BCC", false));
+//        db.writeAccount(new Account("ODP", asList("CharybdeBE", "Tud"), false, "black", 1000.0, "BCC", false));
+//        db.writeAccount(new Account("OVV", asList( "Tud"), false, "black", 1000.0, "BCC", false));
+
+
         plugin = this;
         createDir();
         Vault v = new Vault();
@@ -70,7 +80,6 @@ public class BCC extends JavaPlugin {
     @Override
     public void onDisable(){
         log("Disable", Level.INFO);
-
     }
 
 

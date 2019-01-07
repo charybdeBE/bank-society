@@ -1,5 +1,7 @@
 package be.charybde.bank.command.account;
 
+import be.charybde.bank.BCC;
+import be.charybde.bank.db.SettableCallable;
 import be.charybde.bank.entities.Account;
 import be.charybde.bank.Utils;
 import be.charybde.bank.Vault;
@@ -7,8 +9,10 @@ import be.charybde.bank.command.ICommandHandler;
 import be.charybde.bank.command.commandUtil;
 import org.bukkit.entity.Player;
 
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -27,27 +31,37 @@ public class AddOwnerCommand implements ICommandHandler {
 
     @Override
     public boolean handle(String command, String[] args, Player player) {
-        if(args.length < 1)
+        if (args.length < 1)
             return false;
 
-        Account account = Account.fetch(args[0]);
-        if(account == null) {
-            commandUtil.sendToPlayerOrConsole(Utils.formatMessage("notfound"), player);
-            return true;
-        }
-        if(player != null && !Vault.getPermission().has(player, "bcc.admin") && !account.isAllowed(player.getName())){
-            commandUtil.sendToPlayerOrConsole(Utils.formatMessage("notallowed2"), player);
-            return true;
-        }
+        BCC.db.readAccountByName(args[0], new SettableCallable<Account>() {
+            @Override
+            public Void call() {
+                if (result == null) {
+                    commandUtil.sendToPlayerOrConsole(Utils.formatMessage("notfound"), player);
+                    return null;
+                }
+                if (Vault.getPermission() != null && player != null && !Vault.getPermission().has(player, "bcc.admin") && !result.isAllowed(player.getName())) {
+                    commandUtil.sendToPlayerOrConsole(Utils.formatMessage("notallowed2"), player);
+                    return null;
+                }
 
-        for(int i = 1; i < args.length; ++i) {
-            account.addOwner(args[i].toLowerCase());
-            Map<String, String> message = new HashMap<>();
-            message.put("account", account.getDisplayName());
-            message.put("person", args[i]);
-            commandUtil.sendToPlayerOrConsole(Utils.formatMessage("owner", message), player);
-        }
+                List<String> toAdd = new ArrayList<>();
+                for (int i = 1; i < args.length; ++i) {
+                    toAdd.add(args[i].toLowerCase());
+                    Map<String, String> message = new HashMap<>();
+                    message.put("account", result.displayName());
+                    message.put("person", args[i]);
+                    commandUtil.sendToPlayerOrConsole(Utils.formatMessage("owner", message), player);
+                }
+                BCC.db.addOwners(args[0], toAdd);
 
+
+                return null;
+            }
+        });
         return true;
     }
+
+
 }

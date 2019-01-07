@@ -40,9 +40,9 @@ public class NotifSwitchCommand implements ICommandHandler {
         }
 
         Map<String, String> message = new HashMap<>();
-        message.put("account", account.getDisplayName());
+        message.put("account", account.displayName());
         if(args.length == 1){
-            account.setNotif(!account.getNotif());
+            account.updateNotif(!account.getNotif());
 
             if(account.getNotif()){
                 commandUtil.sendToPlayerOrConsole(Utils.formatMessage("notifOn", message), player);
@@ -54,11 +54,11 @@ public class NotifSwitchCommand implements ICommandHandler {
         }
         else{
             if(args[1].equals("on")){
-                account.setNotif(true);
+                account.updateNotif(true);
                 commandUtil.sendToPlayerOrConsole(Utils.formatMessage("notifOn", message), player);
                 return true;
             }else if(args[1].equals("off")){
-                account.setNotif(false);
+                account.updateNotif(false);
                 commandUtil.sendToPlayerOrConsole(Utils.formatMessage("notifOff", message), player);
                 return true;
             }

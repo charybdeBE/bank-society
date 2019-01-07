@@ -21,7 +21,6 @@ public class SetColorCommand implements ICommandHandler {
         return instance;
     }
 
-
     @Override
     public boolean handle(String command, String[] args, Player player) {
         if(args.length < 1)
@@ -38,9 +37,9 @@ public class SetColorCommand implements ICommandHandler {
         }
 
 
-        if(account.setColor(args[1])){
+        if(account.updateColor(args[1])){
             Map<String, String> message = new HashMap<>();
-            message.put("account", account.getDisplayName());
+            message.put("account", account.displayName());
             commandUtil.sendToPlayerOrConsole(Utils.formatMessage("color", message), player);
         }
         else {

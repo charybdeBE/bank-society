@@ -38,14 +38,16 @@ public class CreateBankCommand implements ICommandHandler {
             return true;
         }
 
-        Map<String, Object> g =  BCC.getInstance().getStorage(Entities.BANK).getValues(false);
-        for(Map.Entry<String, Object> e : g.entrySet()){
-            Bank it = Bank.fetch(e.getKey());
-            if(it.getName().equals(args[0])){
-                commandUtil.sendToPlayerOrConsole(Utils.formatMessage("alreadyexist"), player);
-                return true;
-            }
-        }
+        //TODO already exist
+//
+//        Map<String, Object> g =  BCC.getInstance().getStorage(Entities.BANK).getValues(false);
+//        for(Map.Entry<String, Object> e : g.entrySet()){
+//            Bank it = Bank.fetch(e.getKey());
+//            if(it.getName().equals(args[0])){
+//                commandUtil.sendToPlayerOrConsole(Utils.formatMessage("alreadyexist"), player);
+//                return true;
+//            }
+//        }
 
         new Bank(args[0], args[1].toLowerCase(), 0.0D, true);
 
@@ -53,7 +55,12 @@ public class CreateBankCommand implements ICommandHandler {
         Map<String, String> message = new HashMap<>();
         message.put("account", args[0]);
         commandUtil.sendToPlayerOrConsole(Utils.formatMessage("create", message), player);
-        Utils.logTransaction(player.getName(), args[0], "bank-create", "", "");
+
+        String name = "CONSOLE";
+        if(player != null){
+            name = player.getName();
+        }
+        Utils.logTransaction(name, args[0], "bank-create", "", "");
 
         return true;
     }

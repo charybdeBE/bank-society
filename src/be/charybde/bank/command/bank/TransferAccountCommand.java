@@ -46,23 +46,19 @@ public class TransferAccountCommand implements ICommandHandler {
             return true;
         }
 
-        Bank oldBank = subject.getBank();
+        String oldBank = subject.getBank();
         if(oldBank != null){
-            if(oldBank.getName().equalsIgnoreCase(newBank.getName())){
+            if(oldBank.equalsIgnoreCase(newBank.getName())){
                 return true; //todo msg
-            }
-            else {
-                oldBank.clientMoney(subject.getBalance() * -1);
             }
         }
 
-        newBank.clientMoney(subject.getBalance());
         subject.setBank(newBank.getName());
 
         Map<String, String> message = new HashMap<>();
-        message.put("account", subject.getDisplayName());
+        message.put("account", subject.displayName());
         if(oldBank != null)
-            message.put("bank1", oldBank.getName());
+            message.put("bank1", oldBank);
         else
             message.put("bank1", "nul part");
         message.put("bank2", newBank.getName());

@@ -1,5 +1,6 @@
 package be.charybde.bank.command.account;
 
+import be.charybde.bank.db.SettableCallable;
 import be.charybde.bank.entities.Account;
 import be.charybde.bank.BCC;
 import be.charybde.bank.Utils;
@@ -8,7 +9,10 @@ import be.charybde.bank.command.ICommandHandler;
 import be.charybde.bank.command.commandUtil;
 import be.charybde.bank.entities.Entities;
 import org.bukkit.entity.Player;
+
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -35,25 +39,39 @@ public class DeleteAccountCommand implements ICommandHandler {
             return true;
         }
 
-        Map<String, Object> g =  BCC.getInstance().getStorage(Entities.ACCOUNT).getValues(false);
-        for(Map.Entry<String, Object> e : g.entrySet()){
-            Account it = Account.fetch(e.getKey());
-            if(it.getName().equals(args[0])){
-                BCC plugin = BCC.getInstance();
-                plugin.getStorage(Entities.ACCOUNT).set(args[0], null);
-                plugin.saveStorage(Entities.ACCOUNT);
+        SettableCallable<List<Account>> callback = new SettableCallable<List<Account>>() {
+            @Override
+            public Void call() {
+                Account found = null;
+                for(Account e : result){
+                    if(e.getName().equals(args[0])){
+                        found = e;
+                        break;
+                    }
+                }
+                if(found == null){
+                    commandUtil.sendToPlayerOrConsole(Utils.formatMessage("alreadyexist"), player);
+                    return null;
+                }
+
+                String name = "CONSOLE";
+                if(player != null){
+                    name = player.getName();
+                }
+
+                BCC.db.deleteAccount(found.getName());
+
                 Map<String, String> message = new HashMap<>();
                 message.put("account", args[0]);
-                message.put("money", String.valueOf(it.getBalance()));
+                message.put("money", String.valueOf(found.getBalance()));
                 commandUtil.sendToPlayerOrConsole(Utils.formatMessage("delete", message), player);
-                Utils.logTransaction(player.getName(), args[0], "delete", Double.toString(it.getBalance()), "");
-                return true;
+                Utils.logTransaction(name, args[0], "delete", Double.toString(found.getBalance()), "");
+                return null;
             }
-        }
+        };
 
-        Map<String, String> message = new HashMap<>();
-        message.put("account", args[0]);
-        commandUtil.sendToPlayerOrConsole(Utils.formatMessage("notfound", message), player);
+        BCC.db.readAllAccounts(callback);
+
 
         return true;
     }

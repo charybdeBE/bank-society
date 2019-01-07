@@ -7,8 +7,10 @@ import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.command.PluginCommand;
 
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -17,82 +19,70 @@ import java.util.Map;
 public class Account implements Entity {
     private String name;
     private String bankName;
-    private ArrayList<String> authorizedPlayer;
+    public List<String> authorizedPlayers;
     private Boolean notif;
-    private String color;
+    public String color;
     private double amount;
 
 
+    //For serializing
+    public Account() {
 
-//Kept for legacy section
-    public Account(String n, ArrayList<String> auth, boolean notif, boolean save){
-        this(n, auth, notif, null,0, "BCC", save);
     }
 
-    public Account(String n, ArrayList<String> auth, boolean notif){
+    //Kept for legacy section
+    public Account(String n, List<String> auth, boolean notif, boolean save) {
+        this(n, auth, notif, null, 0, "BCC", save);
+    }
+
+    public Account(String n, List<String> auth, boolean notif) {
         this(n, auth, notif, true);
     }
 
-    public Account(String n){
-        this(n, new ArrayList<String>(), false, true);
+    public Account(String n) {
+        this(n, new ArrayList<>(), false, true);
     }
 
     //end section
-    public Account(String name, ArrayList<String> auth, Boolean notif, String color, double amount,  String bankName, boolean save) {
+    public Account(String name, List<String> auth, Boolean notif, String color, double amount, String bankName, boolean save) {
         this.name = name;
-        this.authorizedPlayer = auth;
+        this.authorizedPlayers = auth;
         this.notif = notif;
         this.color = color;
         this.bankName = bankName;
         this.amount = amount;
-        if(save) {
+        if (save) {
             this.save();
         }
     }
 
-    public static Account fetch(String name){
-        BCC plugin = BCC.getInstance();
-        ArrayList<String> auth = (ArrayList<String>) plugin.getStorage(Entities.ACCOUNT).get(name+".owners", null);
-        Boolean notif = (Boolean) plugin.getStorage(Entities.ACCOUNT).get(name+".notifications", null);
-        String color = (String) plugin.getStorage(Entities.ACCOUNT).get(name+".color", null);
-        String bankName = (String) plugin.getStorage(Entities.ACCOUNT).get(name+".bank", null);
-        double amount = (double) plugin.getStorage(Entities.ACCOUNT).get(name+".amount", 0);
-        if(auth == null || notif == null)
-            return null;
-        return new Account(name, auth, notif, color, amount, bankName, false);
+    public static Account fetch(String name) {
+        Account acc = BCC.db.readAccountByName(name);
+        return acc;
     }
-
-    public boolean addOwner(String auth){
-        authorizedPlayer.add(auth.toLowerCase());
-        this.save();
-        return  true;
-    }
-
 
     public boolean pay(double amount, String player) {
         return this.pay(amount, player, "");
     }
 
-    public boolean pay(double amount, String player, String communication){
-        if(amount < 0.0D || Vault.getEconomy().getBalance(player) < amount)
+    public boolean pay(double amount, String player, String communication) {
+        if (amount < 0.0D || Vault.getEconomy().getBalance(player) < amount)
             return false;
 
         addMoney(amount);
         Vault.getEconomy().withdrawPlayer(player, amount);
-        if(notif){
+        if (notif) {
             Map<String, String> message = new HashMap<>();
-            message.put("account", this.getDisplayName());
+            message.put("account", this.displayName());
             message.put("money", Utils.formatDouble(amount));
             message.put("person", player);
-            if(!communication.equals("")){
+            if (!communication.equals("")) {
                 communication = ChatColor.GREEN + "(" + ChatColor.WHITE + communication + ChatColor.GREEN + ")";
             }
             message.put("motif", communication);
             sendNotification(Utils.formatMessage("notiftextIn", message));
         }
-        if(Bank.fetch(this.bankName) != null){
-            Bank.fetch(this.bankName).clientMoney(amount);
-        }
+
         Utils.logTransaction(player, this.name, "pay", Double.toString(amount), communication);
         return true;
     }
@@ -102,24 +92,22 @@ public class Account implements Entity {
         return this.withdraw(amount, player, "");
     }
 
-    public boolean withdraw(double amount, String player , String communication){
-        if(amount > 0.0D && this.getBalance() >= amount){
+    public boolean withdraw(double amount, String player, String communication) {
+        if (amount > 0.0D && this.getBalance() >= amount) {
             Vault.getEconomy().depositPlayer(player, amount);
-            addMoney(amount * -1);
-            if(notif){
+            this.addMoney(amount * -1);
+            if (notif) {
                 Map<String, String> message = new HashMap<>();
-                message.put("account", this.getDisplayName());
+                message.put("account", this.displayName());
                 message.put("money", Utils.formatDouble(amount));
                 message.put("person", player);
-                if(!communication.equals("")){
+                if (!communication.equals("")) {
                     communication = ChatColor.GREEN + "(" + ChatColor.WHITE + communication + ChatColor.GREEN + ")";
                 }
                 message.put("motif", communication);
                 sendNotification(Utils.formatMessage("notiftextOut", message));
             }
-            if(Bank.fetch(this.bankName) != null){
-                Bank.fetch(this.bankName).clientMoney(amount * -1);
-            }
+
             Utils.logTransaction(player, this.name, "withdraw", Double.toString(amount), communication);
             return true;
         }
@@ -127,33 +115,52 @@ public class Account implements Entity {
         return false;
     }
 
-    public boolean isAllowed(String player) {
-        return this.authorizedPlayer.contains(player.toLowerCase());
+    public List<String> getAuthorizedPlayers() {
+        if (this.authorizedPlayers == null) {
+            this.authorizedPlayers = BCC.db.getOwners(this.getName());
+        }
+        return this.authorizedPlayers;
     }
 
-    public double getBalance(){
+    public boolean isAllowed(String player) {
+        return BCC.db.hasAccess(player, this.name);
+    }
+
+    public double getBalance() {
         return this.amount;
     }
 
+    public void setBalance(double input) {
+        this.amount = input;
+    }
 
+    public void save() {
+        BCC.db.writeAccount(this);
+    }
 
-    public synchronized void save(){
-        BCC plugin = BCC.getInstance();
-        plugin.getStorage(Entities.ACCOUNT).set(this.name+".owners", this.authorizedPlayer);
-        plugin.getStorage(Entities.ACCOUNT).set(this.name+".notifications", this.notif);
-        plugin.getStorage(Entities.ACCOUNT).set(this.name+".color", this.color);
-        plugin.getStorage(Entities.ACCOUNT).set(this.name+".bank", this.bankName);
-        plugin.getStorage(Entities.ACCOUNT).set(this.name+".amount", this.amount);
-        plugin.saveStorage(Entities.ACCOUNT);
+    public void save(boolean existingAccount) {
+        if (!existingAccount) {
+            this.save();
+        } else {
+            BCC.db.updateAccount(this);
+        }
     }
 
     public String getName() {
         return this.name;
     }
 
-    public void setNotif(boolean what){
+    public void setName(String s) {
+        this.name = s;
+    }
+
+    public void setNotif(boolean what) {
         notif = what;
-        this.save();
+    }
+
+    public void updateNotif(boolean what) {
+        this.setNotif(what);
+        this.save(true);
     }
 
     public Boolean getNotif() {
@@ -161,60 +168,69 @@ public class Account implements Entity {
     }
 
 
-    public boolean setColor(String c){
-        if(c.startsWith("&")){
+    public String getColor() {
+        return color;
+    }
+
+    public boolean setColor(String c) {
+        if (c.startsWith("&")) {
             String newS = ChatColor.translateAlternateColorCodes('&', c);
             this.color = newS.substring(1);
-        }
-        else{
+        } else {
             try {
                 ChatColor cc = ChatColor.valueOf(c.toUpperCase());
                 System.out.println(cc);
                 this.color = String.valueOf(cc.getChar());
-            }catch (IllegalArgumentException e){
+            } catch (IllegalArgumentException e) {
                 return false;
             }
         }
-        this.save();
         return true;
     }
 
-    private void sendNotification(String s){
+    public boolean updateColor(String c) {
+        boolean result = this.setColor(c);
+        this.save(true);
+        return result;
+    }
+
+    private void sendNotification(String s) {
         PluginCommand mail = Bukkit.getPluginCommand("mail");
         String mail_args[] = new String[3];
         mail_args[0] = "send";
         mail_args[1] = "";
         mail_args[2] = s;
-        for(String own : this.authorizedPlayer){
+        if (this.authorizedPlayers == null) {
+            this.authorizedPlayers = this.getAuthorizedPlayers();
+        }
+        for (String own : this.authorizedPlayers) {
             mail_args[1] = own;
             mail.getExecutor().onCommand(Bukkit.getConsoleSender(), mail, "mail", mail_args);
         }
     }
 
-    public String getDisplayName(){
-        if(this.color != null){
+    public String displayName() {
+        if (this.color != null) {
             return ChatColor.getByChar(this.color) + "" + this.name + ChatColor.GREEN;
-        }
-        else
+        } else
             return this.name;
     }
 
-    public void delOwner(String s) {
-        this.authorizedPlayer.remove(s);
-        this.save();
-    }
-
-    public void setBank(String s){
+    public void setBank(String s) {
         this.bankName = s;
-        this.save();
     }
 
-    public Bank getBank() {
-        return Bank.fetch(this.bankName);
+    public String getBank() {
+        return bankName;
     }
 
-    private addMoney(double d){
+
+//    public Bank getBank() {
+//        return Bank.fetch(this.bankName);
+//    }
+
+    private void addMoney(double d) {
         this.amount += d;
-        this.save();
+        this.save(true);
     }
 }

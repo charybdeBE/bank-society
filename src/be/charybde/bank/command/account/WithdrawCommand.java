@@ -24,7 +24,6 @@ public class WithdrawCommand implements ICommandHandler {
         return instance;
     }
     @Override
-    //TODO error when not exist
     //TODO perm for super op
     public boolean handle(String command, String[] args, Player player) {
         if(args.length < 2)
@@ -33,6 +32,11 @@ public class WithdrawCommand implements ICommandHandler {
             return false;
 
         Account account = Account.fetch(args[0]);
+        if(account == null) {
+            commandUtil.sendToPlayerOrConsole(Utils.formatMessage("notfound"), player);
+            return true;
+        }
+
         if(!account.isAllowed(player.getPlayerListName())){
             commandUtil.sendToPlayerOrConsole(Utils.formatMessage("notallowed"), player);
             return true;
@@ -56,12 +60,14 @@ public class WithdrawCommand implements ICommandHandler {
         if( result ){
             Map<String, String> message = new HashMap<>();
             message.put("money", args[1]);
-            message.put("account", account.getDisplayName());
+            message.put("account", account.displayName());
             commandUtil.sendToPlayerOrConsole(Utils.formatMessage("withdraw", message), player);
             return true;
         }
         else{
-            commandUtil.sendToPlayerOrConsole(Utils.formatMessage("notwithdraw"), player);
+            Map<String, String> message = new HashMap<>();
+            message.put("account", account.displayName());
+            commandUtil.sendToPlayerOrConsole(Utils.formatMessage("notwithdraw", message), player);
             return true;
         }
 
