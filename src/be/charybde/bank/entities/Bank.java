@@ -42,7 +42,7 @@ public class Bank implements Entity {
     // Public section
 
     public boolean withdraw(String player, double amount, String reason){
-        if(amount > 0.0D && this.money >= amount && amount <= this.getCapacity()){
+        if(amount > 0.0D && amount <= this.getCapacity()){
             Vault.getEconomy().depositPlayer(player, amount);
             this.money -= amount;
             this.update();
